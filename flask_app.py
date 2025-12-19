@@ -135,19 +135,24 @@ def complete():
     db_write("DELETE FROM todos WHERE user_id=%s AND id=%s", (current_user.id, todo_id,))
     return redirect(url_for("index"))
 
-CREATE TABLE users (
+db_write("""
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(250) NOT NULL UNIQUE,
     password VARCHAR(250) NOT NULL
-);
+)
+""")
 
-CREATE TABLE todos (
+db_write("""
+CREATE TABLE IF NOT EXISTS todos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     content VARCHAR(100),
     due DATETIME,
     FOREIGN KEY (user_id) REFERENCES users(id)
-);
+)
+""")
+
 
 if __name__ == "__main__":
     app.run()
