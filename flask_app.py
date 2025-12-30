@@ -14,20 +14,16 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
-# Load .env variables
 load_dotenv()
 W_SECRET = os.getenv("W_SECRET")
 
-# Init flask app
 app = Flask(__name__)
 app.config["DEBUG"] = True
 app.secret_key = "supersecret"
 
-# Init auth
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# DON'T CHANGE
 def is_valid_signature(x_hub_signature, data, private_key):
     hash_algorithm, github_signature = x_hub_signature.split('=', 1)
     algorithm = hashlib.__dict__.get(hash_algorithm)
@@ -35,7 +31,6 @@ def is_valid_signature(x_hub_signature, data, private_key):
     mac = hmac.new(encoded_key, msg=data, digestmod=algorithm)
     return hmac.compare_digest(mac.hexdigest(), github_signature)
 
-# DON'T CHANGE
 @app.post('/update_server')
 def webhook():
     x_hub_signature = request.headers.get('X-Hub-Signature')
@@ -46,24 +41,14 @@ def webhook():
         return 'Updated PythonAnywhere successfully', 200
     return 'Unathorized', 401
 
-# -------------------------
-# Auth routes (NEW SCHEMA)
-# -------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
-
     if request.method == "POST":
-        # NEW: login via email
-        user = authenticate(
-            request.form["email"],
-            request.form["password"]
-        )
-
+        user = authenticate(request.form["email"], request.form["password"])
         if user:
             login_user(user)
             return redirect(url_for("index"))
-
         error = "E-Mail oder Passwort ist falsch."
 
     return render_template(
@@ -75,26 +60,22 @@ def login():
         footer_text="Noch kein Konto?",
         footer_link_url=url_for("register"),
         footer_link_label="Registrieren",
-        mode="login"  # optional: für template-Logik
+        mode="login"
     )
-
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     error = None
-
     if request.method == "POST":
-        # NEW: register requires first/last name + email
         vorname = request.form["vorname"]
         nachname = request.form["nachname"]
         email = request.form["email"]
         password = request.form["password"]
 
-        ok = register_user(vorname, nachname, email, password)
+        ok, msg = register_user(vorname, nachname, email, password)
         if ok:
             return redirect(url_for("login"))
-
-        error = "Diese E-Mail existiert bereits."
+        error = msg or "Registrierung fehlgeschlagen."
 
     return render_template(
         "auth.html",
@@ -105,7 +86,7 @@ def register():
         footer_text="Du hast bereits ein Konto?",
         footer_link_url=url_for("login"),
         footer_link_label="Einloggen",
-        mode="register"  # optional
+        mode="register"
     )
 
 @app.route("/logout")
@@ -114,64 +95,29 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
-# -------------------------
-# Users list (NEW SCHEMA)
-# -------------------------
 @app.route("/users", methods=["GET"])
 @login_required
 def users():
-    rows = db_read(
-        "SELECT konto_id, vorname, nachname, email FROM kunden_konto ORDER BY nachname, vorname"
-    )
+    rows = db_read("SELECT konto_id, vorname, nachname, email FROM kunden_konto ORDER BY nachname, vorname")
     return render_template("users.html", users=rows)
 
-# -------------------------
-# App routes (TODO part)
-# -------------------------
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def index():
-    # GET
     if request.method == "GET":
-        # IMPORTANT: if you keep old todos-table, this stays:
-        # todos = db_read("SELECT id, content, due FROM todos WHERE user_id=%s ORDER BY due", (current_user.id,))
-
-        # If you migrated todos to kunden_konto_id (recommended with new schema):
-        todos = db_read(
-            "SELECT id, content, due FROM todos WHERE kunden_konto_id=%s ORDER BY due",
-            (current_user.id,)
-        )
+        todos = db_read("SELECT id, content, due FROM todos WHERE kunden_konto_id=%s ORDER BY due", (current_user.id,))
         return render_template("main_page.html", todos=todos)
 
-    # POST
     content = request.form["contents"]
     due = request.form["due_at"]
-
-    # If migrated:
-    db_write(
-        "INSERT INTO todos (kunden_konto_id, content, due) VALUES (%s, %s, %s)",
-        (current_user.id, content, due)
-    )
-
-    # If old schema:
-    # db_write("INSERT INTO todos (user_id, content, due) VALUES (%s, %s, %s)", (current_user.id, content, due))
-
+    db_write("INSERT INTO todos (kunden_konto_id, content, due) VALUES (%s, %s, %s)", (current_user.id, content, due))
     return redirect(url_for("index"))
 
 @app.post("/complete")
 @login_required
 def complete():
     todo_id = request.form.get("id")
-
-    # If migrated:
-    db_write(
-        "DELETE FROM todos WHERE kunden_konto_id=%s AND id=%s",
-        (current_user.id, todo_id)
-    )
-
-    # If old schema:
-    # db_write("DELETE FROM todos WHERE user_id=%s AND id=%s", (current_user.id, todo_id))
-
+    db_write("DELETE FROM todos WHERE kunden_konto_id=%s AND id=%s", (current_user.id, todo_id))
     return redirect(url_for("index"))
 
 if __name__ == "__main__":
