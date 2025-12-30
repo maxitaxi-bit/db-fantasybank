@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 import os
 from mysql.connector import pooling
 
-# Load .env variables
 load_dotenv()
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
@@ -11,47 +10,47 @@ DB_CONFIG = {
     "database": os.getenv("DB_DATABASE")
 }
 
-# Init db
 pool = pooling.MySQLConnectionPool(pool_name="pool", pool_size=5, **DB_CONFIG)
+
 def get_conn():
     return pool.get_connection()
 
-# DB-Helper
 def db_read(sql, params=None, single=False):
     conn = get_conn()
+    cur = None
     try:
         cur = conn.cursor(dictionary=True)
         cur.execute(sql, params or ())
-
         if single:
-            # liefert EIN Dict oder None
             row = cur.fetchone()
-            print("db_read(single=True) ->", row)   # DEBUG
+            print("db_read(single=True) ->", row)
             return row
-        else:
-            # liefert Liste von Dicts (evtl. [])
-            rows = cur.fetchall()
-            print("db_read(single=False) ->", rows)  # DEBUG
-            return rows
-
+        rows = cur.fetchall()
+        print("db_read(single=False) ->", rows)
+        return rows
     finally:
-        try:
-            cur.close()
-        except:
-            pass
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
         conn.close()
 
-
-def db_write(sql, params=None):
+def db_write(sql, params=None, return_lastrowid=False):
     conn = get_conn()
+    cur = None
     try:
         cur = conn.cursor()
         cur.execute(sql, params or ())
         conn.commit()
-        print("db_write OK:", sql, params)  # DEBUG
+        print("db_write OK:", sql, params)
+        if return_lastrowid:
+            return cur.lastrowid
+        return None
     finally:
-        try:
-            cur.close()
-        except:
-            pass
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
         conn.close()
