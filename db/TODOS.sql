@@ -24,7 +24,11 @@ CREATE TABLE IF NOT EXISTS gesamt_konto (
     FOREIGN KEY (kunden_konto_id) REFERENCES kunden_konto(konto_id)
 );
 
-CREATE TABLE IF NOT EXISTS todos (
+USE `maxitaxi$default`;
+
+DROP TABLE IF EXISTS todos;
+
+CREATE TABLE todos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   kunden_konto_id BIGINT NOT NULL,
   content VARCHAR(100) NOT NULL,
