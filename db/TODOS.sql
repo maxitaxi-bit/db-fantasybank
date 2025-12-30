@@ -1,3 +1,15 @@
+CREATE TABLE todos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  kunden_konto_id BIGINT NOT NULL,
+  content VARCHAR(100) NOT NULL,
+  due DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_todos_kunde
+    FOREIGN KEY (kunden_konto_id)
+    REFERENCES kunden_konto(konto_id)
+    ON DELETE CASCADE
+);
+
 CREATE TABLE kunden_konto (
   konto_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   vorname VARCHAR(80) NOT NULL,
