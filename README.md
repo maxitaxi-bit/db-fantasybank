@@ -23,7 +23,7 @@ Diese Anleitung beschreibt den kompletten Ablauf, um das Projekt auszuführen un
 3.  Das neue Repo heisst z.B. username/db-project
 
 ### 1.2 Teammitglieder einladen
-Im geforkte Repo:
+Im geforkten Repo:
 1.  Settings
 2.  Collaborators
 3.  Add people
@@ -73,10 +73,10 @@ chmod +x post-merge
 2.  Konsole schliessen
 3.  Im Menü auf *Files*
 4.  In den Ordner *mysite/.git/hooks* navigieren (Ordnerstruktur links)
-5.  File *post-merge* (rechts) öffnen, folgenden Inhalt einfügen und speichern (Save)
+5.  File *post-merge* (rechts) öffnen, folgenden Inhalt einfügen und speichern (Save). **Wichtig:** Der username muss hier in Kleinbuchstabe geschrieben werden! 
 ```bash
 #!/bin/bash
-touch /var/www/<username_pythonanywhere>_pythonanywhere_com_wsgi.py
+touch /var/www/<lowercase(username_pythonanywhere)>_pythonanywhere_com_wsgi.py
 ```
 
 ------------------------------------------------------------------------
@@ -123,7 +123,23 @@ Im GitHub-Repo:
 4.  Secret: Die geheime Kombination, die du im ".env" unter `W_SECRET` gesetzt hast
 5.  **Add webhook**
 
+------------------------------------------------------------------------
+
 ## ✅ 5. Website testen
 1. Rufe die URL http://<username_pythonanywhere>.pythonanywhere.com auf.
 2. Siehst du ein Login? Klicke auf registrieren und registriere einen User
 3. Falls du noch die Message "Welcome to Flask!" siehst, gehe zurück zum Menü "Web" und klicke auf 🔄 Reload
+
+------------------------------------------------------------------------
+
+## 🔗 6. Nützliche Links
+- DB-Testing: https://www.db-fiddle.com/
+- MySQL: https://www.w3schools.com/mysql/default.asp
+- Python: https://www.w3schools.com/python/default.asp
+- HTML / CSS:
+    - Sammlung von UI-Elementen: https://www.w3schools.com/howto/howto_css_icon_bar.asp
+    - HTML: https://www.w3schools.com/html/default.asp
+    - CSS: https://www.w3schools.com/css/default.asp
+    - Bootstrap-UI-Elemente: https://getbootstrap.com/docs/5.3/examples/
+- Flask: https://www.geeksforgeeks.org/python/flask-tutorial/
+- Git: https://www.w3schools.com/git/default.asp
