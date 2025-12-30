@@ -1,3 +1,9 @@
+-- =====================================================
+-- DATABASE SCHEMA (SOURCE OF TRUTH)
+-- Project: Flask + MySQL (PythonAnywhere)
+-- =====================================================
+
+-- Kundenkonto (User)
 CREATE TABLE IF NOT EXISTS kunden_konto (
   konto_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   vorname VARCHAR(80) NOT NULL,
@@ -8,8 +14,9 @@ CREATE TABLE IF NOT EXISTS kunden_konto (
   geburtsdatum DATE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_login_at TIMESTAMP NULL
-);
+) ENGINE=InnoDB;
 
+-- Gesamt-Konto (1:n zu kunden_konto)
 CREATE TABLE IF NOT EXISTS gesamt_konto (
   gesamt_konto_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   kunden_konto_id BIGINT NOT NULL,
@@ -20,18 +27,23 @@ CREATE TABLE IF NOT EXISTS gesamt_konto (
   schluessel_ref VARCHAR(120),
   status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_gesamt_konto_kunde
-    FOREIGN KEY (kunden_konto_id) REFERENCES kunden_konto(konto_id)
-);
 
-CREATE TABLE todos (
+  CONSTRAINT fk_gesamt_konto_kunde
+    FOREIGN KEY (kunden_konto_id)
+    REFERENCES kunden_konto(konto_id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Todos (gehören zu kunden_konto)
+CREATE TABLE IF NOT EXISTS todos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   kunden_konto_id BIGINT NOT NULL,
   content VARCHAR(100) NOT NULL,
   due DATETIME NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
   CONSTRAINT fk_todos_kunde
     FOREIGN KEY (kunden_konto_id)
     REFERENCES kunden_konto(konto_id)
     ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
