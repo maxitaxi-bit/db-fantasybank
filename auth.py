@@ -3,111 +3,129 @@ from flask_login import LoginManager, UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import db_read, db_write
 
-# Logger für dieses Modul
 logger = logging.getLogger(__name__)
 
 login_manager = LoginManager()
 
 
 class User(UserMixin):
-    def __init__(self, id, username, password):
-        self.id = id
-        self.username = username
-        self.password = password
+    def __init__(self, konto_id: int, email: str, passwort_hash: str, vorname: str = "", nachname: str = ""):
+        self.id = konto_id                 # flask-login uses .id
+        self.email = email
+        self.password_hash = passwort_hash
+        self.vorname = vorname
+        self.nachname = nachname
 
     @staticmethod
-    def get_by_id(user_id):
-        logger.debug("User.get_by_id() aufgerufen mit user_id=%s", user_id)
+    def get_by_id(konto_id: int):
         try:
             row = db_read(
-                "SELECT * FROM users WHERE id = %s",
-                (user_id,),
+                """
+                SELECT konto_id, email, passwort_hash, vorname, nachname
+                FROM kunden_konto
+                WHERE konto_id = %s
+                """,
+                (konto_id,),
                 single=True
             )
-            logger.debug("User.get_by_id() DB-Ergebnis: %r", row)
         except Exception:
-            logger.exception("Fehler bei User.get_by_id(%s)", user_id)
+            logger.exception("Fehler bei User.get_by_id(%s)", konto_id)
             return None
 
-        if row:
-            return User(row["id"], row["username"], row["password"])
-        else:
-            logger.warning("User.get_by_id(): kein User mit id=%s gefunden", user_id)
+        if not row:
             return None
+
+        return User(
+            row["konto_id"],
+            row["email"],
+            row["passwort_hash"],
+            row.get("vorname", ""),
+            row.get("nachname", "")
+        )
 
     @staticmethod
-    def get_by_username(username):
-        logger.debug("User.get_by_username() aufgerufen mit username=%s", username)
+    def get_by_email(email: str):
         try:
             row = db_read(
-                "SELECT * FROM users WHERE username = %s",
-                (username,),
+                """
+                SELECT konto_id, email, passwort_hash, vorname, nachname
+                FROM kunden_konto
+                WHERE email = %s
+                """,
+                (email,),
                 single=True
             )
-            logger.debug("User.get_by_username() DB-Ergebnis: %r", row)
         except Exception:
-            logger.exception("Fehler bei User.get_by_username(%s)", username)
+            logger.exception("Fehler bei User.get_by_email(%s)", email)
             return None
 
-        if row:
-            return User(row["id"], row["username"], row["password"])
-        else:
-            logger.info("User.get_by_username(): kein User mit username=%s", username)
+        if not row:
             return None
 
+        return User(
+            row["konto_id"],
+            row["email"],
+            row["passwort_hash"],
+            row.get("vorname", ""),
+            row.get("nachname", "")
+        )
 
-# Flask-Login
+
 @login_manager.user_loader
 def load_user(user_id):
-    logger.debug("load_user() aufgerufen mit user_id=%s", user_id)
     try:
-        user = User.get_by_id(int(user_id))
-    except ValueError:
-        logger.error("load_user(): user_id=%r ist keine int", user_id)
+        return User.get_by_id(int(user_id))
+    except Exception:
+        logger.exception("load_user(): invalid user_id=%r", user_id)
         return None
 
-    if user:
-        logger.debug("load_user(): User gefunden: %s (id=%s)", user.username, user.id)
-    else:
-        logger.warning("load_user(): kein User für id=%s gefunden", user_id)
 
-    return user
-
-
-# Helpers
-def register_user(username, password):
-    logger.info("register_user(): versuche neuen User '%s' anzulegen", username)
-
-    existing = User.get_by_username(username)
-    if existing:
-        logger.warning("register_user(): Username '%s' existiert bereits", username)
+def register_user(vorname: str, nachname: str, email: str, password: str, create_default_account: bool = True) -> bool:
+    # Unique check
+    if User.get_by_email(email):
         return False
 
-    hashed = generate_password_hash(password)
+    pw_hash = generate_password_hash(password)
+
     try:
         db_write(
-            "INSERT INTO users (username, password) VALUES (%s, %s)",
-            (username, hashed)
+            """
+            INSERT INTO kunden_konto (vorname, nachname, email, passwort_hash)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (vorname, nachname, email, pw_hash)
         )
-        logger.info("register_user(): User '%s' erfolgreich angelegt", username)
+
+        if create_default_account:
+            # Get new konto_id
+            row = db_read("SELECT konto_id FROM kunden_konto WHERE email=%s", (email,), single=True)
+            konto_id = row["konto_id"]
+
+            db_write(
+                """
+                INSERT INTO gesamt_konto (kunden_konto_id, konto_typ, waehrung, saldo)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (konto_id, "Savings", "CHF", 0)
+            )
+
+        return True
     except Exception:
-        logger.exception("Fehler beim Anlegen von User '%s'", username)
+        logger.exception("register_user(): Fehler beim Anlegen")
         return False
 
-    return True
 
-
-def authenticate(username, password):
-    logger.info("authenticate(): Login-Versuch für '%s'", username)
-    user = User.get_by_username(username)
-
+def authenticate(email: str, password: str):
+    user = User.get_by_email(email)
     if not user:
-        logger.warning("authenticate(): kein User mit username='%s' gefunden", username)
         return None
 
-    if check_password_hash(user.password, password):
-        logger.info("authenticate(): Passwort korrekt für '%s'", username)
+    if check_password_hash(user.password_hash, password):
+        # optional: last_login_at
+        try:
+            db_write("UPDATE kunden_konto SET last_login_at = NOW() WHERE konto_id=%s", (user.id,))
+        except Exception:
+            logger.exception("Konnte last_login_at nicht setzen (nicht kritisch).")
         return user
 
-    logger.warning("authenticate(): falsches Passwort für '%s'", username)
     return None
