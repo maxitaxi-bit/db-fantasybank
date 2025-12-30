@@ -1,4 +1,4 @@
-CREATE TABLE kunden_konto (
+CREATE TABLE IF NOT EXISTS kunden_konto (
   konto_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   vorname VARCHAR(80) NOT NULL,
   nachname VARCHAR(80) NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE kunden_konto (
   last_login_at TIMESTAMP NULL
 );
 
-CREATE TABLE gesamt_konto (
+CREATE TABLE IF NOT EXISTS gesamt_konto (
   gesamt_konto_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   kunden_konto_id BIGINT NOT NULL,
   konto_typ VARCHAR(40) NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE gesamt_konto (
     FOREIGN KEY (kunden_konto_id) REFERENCES kunden_konto(konto_id)
 );
 
-CREATE TABLE todos (
+CREATE TABLE IF NOT EXISTS todos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   kunden_konto_id BIGINT NOT NULL,
   content VARCHAR(100) NOT NULL,
