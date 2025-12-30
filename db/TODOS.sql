@@ -24,7 +24,6 @@ CREATE TABLE IF NOT EXISTS gesamt_konto (
     FOREIGN KEY (kunden_konto_id) REFERENCES kunden_konto(konto_id)
 );
 
-USE `maxitaxi$default`;
 
 DROP TABLE IF EXISTS todos;
 
