@@ -37,13 +37,42 @@
     {% endif %}
 
     <form action="{{ action }}" method="post">
+
+      {# REGISTER: Vorname/Nachname nur wenn mode == "register" #}
+      {% if mode == "register" %}
+        <div class="form-group">
+          <label for="vorname">Vorname</label>
+          <input
+            id="vorname"
+            type="text"
+            class="form-control"
+            name="vorname"
+            placeholder="Vorname"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="nachname">Nachname</label>
+          <input
+            id="nachname"
+            type="text"
+            class="form-control"
+            name="nachname"
+            placeholder="Nachname"
+            required
+          >
+        </div>
+      {% endif %}
+
       <div class="form-group">
-        <label for="username">Benutzername</label>
+        <label for="email">E-Mail</label>
         <input
-          type="text"
+          id="email"
+          type="email"
           class="form-control"
-          name="username"
-          placeholder="Benutzername"
+          name="email"
+          placeholder="E-Mail"
           required
         >
       </div>
@@ -51,6 +80,7 @@
       <div class="form-group">
         <label for="password">Passwort</label>
         <input
+          id="password"
           type="password"
           class="form-control"
           name="password"
