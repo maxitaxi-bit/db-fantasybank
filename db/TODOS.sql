@@ -24,9 +24,6 @@ CREATE TABLE IF NOT EXISTS gesamt_konto (
     FOREIGN KEY (kunden_konto_id) REFERENCES kunden_konto(konto_id)
 );
 
-
-DROP TABLE IF EXISTS todos;
-
 CREATE TABLE todos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   kunden_konto_id BIGINT NOT NULL,
