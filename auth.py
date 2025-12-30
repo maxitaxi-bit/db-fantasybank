@@ -4,13 +4,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from db import db_read, db_write
 
 logger = logging.getLogger(__name__)
-
 login_manager = LoginManager()
 
 
 class User(UserMixin):
     def __init__(self, konto_id: int, email: str, passwort_hash: str, vorname: str = "", nachname: str = ""):
-        self.id = konto_id                 # flask-login uses .id
+        self.id = konto_id
         self.email = email
         self.password_hash = passwort_hash
         self.vorname = vorname
@@ -81,13 +80,13 @@ def load_user(user_id):
 
 
 def register_user(vorname: str, nachname: str, email: str, password: str, create_default_account: bool = True) -> bool:
-    # Unique check
     if User.get_by_email(email):
         return False
 
     pw_hash = generate_password_hash(password)
 
     try:
+        # 1) create kunden_konto
         db_write(
             """
             INSERT INTO kunden_konto (vorname, nachname, email, passwort_hash)
@@ -97,10 +96,11 @@ def register_user(vorname: str, nachname: str, email: str, password: str, create
         )
 
         if create_default_account:
-            # Get new konto_id
-            row = db_read("SELECT konto_id FROM kunden_konto WHERE email=%s", (email,), single=True)
+            # 2) fetch inserted id safely
+            row = db_read("SELECT LAST_INSERT_ID() AS konto_id", single=True)
             konto_id = row["konto_id"]
 
+            # 3) create default gesamt_konto
             db_write(
                 """
                 INSERT INTO gesamt_konto (kunden_konto_id, konto_typ, waehrung, saldo)
@@ -121,7 +121,6 @@ def authenticate(email: str, password: str):
         return None
 
     if check_password_hash(user.password_hash, password):
-        # optional: last_login_at
         try:
             db_write("UPDATE kunden_konto SET last_login_at = NOW() WHERE konto_id=%s", (user.id,))
         except Exception:
@@ -129,3 +128,4 @@ def authenticate(email: str, password: str):
         return user
 
     return None
+
