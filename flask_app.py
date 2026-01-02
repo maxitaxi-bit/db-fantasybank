@@ -123,5 +123,54 @@ def complete():
     db_write("DELETE FROM todos WHERE kunden_konto_id=%s AND id=%s", (current_user.id, todo_id))
     return redirect(url_for("index"))
 
+@app.route("/bank", methods=["GET"])
+@login_required
+def bank():
+    saldo, waehrung = get_balance(current_user.id)
+    tx = db_read(
+        """SELECT typ, betrag, waehrung, gebuehr, beschreibung, ausgefuehrt_am
+           FROM transaktion
+           WHERE gesamt_konto_id = (
+             SELECT gesamt_konto_id FROM gesamt_konto
+             WHERE kunden_konto_id=%s ORDER BY gesamt_konto_id LIMIT 1
+           )
+           ORDER BY ausgefuehrt_am DESC
+           LIMIT 20""",
+        (current_user.id,),
+    )
+    return render_template("bank.html", saldo=saldo, waehrung=waehrung, tx=tx)
+
+@app.post("/bank/deposit")
+@login_required
+def bank_deposit():
+    amount = Decimal(request.form.get("amount", "0").replace(",", "."))
+    try:
+        deposit(current_user.id, amount, "CHF", "Manual deposit")
+        return redirect(url_for("bank"))
+    except Exception as e:
+        return render_template("bank_error.html", error=str(e)), 400
+
+@app.post("/bank/withdraw")
+@login_required
+def bank_withdraw():
+    amount = Decimal(request.form.get("amount", "0").replace(",", "."))
+    try:
+        withdraw(current_user.id, amount, "CHF", "Manual withdrawal")
+        return redirect(url_for("bank"))
+    except Exception as e:
+        return render_template("bank_error.html", error=str(e)), 400
+
+@app.post("/bank/transfer")
+@login_required
+def bank_transfer():
+    to_email = request.form.get("to_email", "")
+    amount = Decimal(request.form.get("amount", "0").replace(",", "."))
+    try:
+        transfer(current_user.id, to_email, amount, "CHF")
+        return redirect(url_for("bank"))
+    except Exception as e:
+        return render_template("bank_error.html", error=str(e)), 400
+
+
 if __name__ == "__main__":
     app.run()
