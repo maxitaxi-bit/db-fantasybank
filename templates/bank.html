@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>Bank Dashboard</h3>
+
+<div class="panel panel-default">
+  <div class="panel-body">
+    <strong>Saldo:</strong> {{ saldo }} {{ waehrung }}
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-sm-4">
+    <h4>Deposit</h4>
+    <form method="POST" action="{{ url_for('bank_deposit') }}">
+      <input class="form-control" name="amount" placeholder="z.B. 100.00" required>
+      <button class="btn btn-success" style="margin-top:10px;">Einzahlen</button>
+    </form>
+  </div>
+
+  <div class="col-sm-4">
+    <h4>Withdraw</h4>
+    <form method="POST" action="{{ url_for('bank_withdraw') }}">
+      <input class="form-control" name="amount" placeholder="z.B. 50.00" required>
+      <button class="btn btn-warning" style="margin-top:10px;">Auszahlen</button>
+    </form>
+  </div>
+
+  <div class="col-sm-4">
+    <h4>Transfer</h4>
+    <form method="POST" action="{{ url_for('bank_transfer') }}">
+      <input class="form-control" name="to_email" placeholder="Empfänger E-Mail" required>
+      <input class="form-control" name="amount" placeholder="Betrag" style="margin-top:8px;" required>
+      <button class="btn btn-primary" style="margin-top:10px;">Senden</button>
+    </form>
+  </div>
+</div>
+
+<hr>
+
+<h4>Letzte Transaktionen</h4>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Zeit</th>
+      <th>Typ</th>
+      <th>Betrag</th>
+      <th>Gebühr</th>
+      <th>Beschreibung</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in tx %}
+      <tr>
+        <td>{{ t.ausgefuehrt_am }}</td>
+        <td>{{ t.typ }}</td>
+        <td>{{ t.betrag }} {{ t.waehrung }}</td>
+        <td>{{ t.gebuehr }}</td>
+        <td>{{ t.beschreibung }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5">Keine Transaktionen.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
