@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="alert alert-danger">
+    <strong>Fehler:</strong> {{ error }}
+  </div>
+  <a class="btn btn-default" href="{{ url_for('bank') }}">Zurück</a>
+{% endblock %}
