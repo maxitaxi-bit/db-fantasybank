@@ -4,11 +4,13 @@ import os
 import git
 import hmac
 import hashlib
+import logging
+from decimal import Decimal, InvalidOperation
+
 from db import db_read, db_write
 from auth import login_manager, authenticate, register_user
 from flask_login import login_user, logout_user, login_required, current_user
-import logging
-from decimal import Decimal
+
 from bank_service import get_balance, deposit, withdraw, transfer
 
 
@@ -27,23 +29,31 @@ app.secret_key = "supersecret"
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
+
+# DON'T CHANGE
 def is_valid_signature(x_hub_signature, data, private_key):
-    hash_algorithm, github_signature = x_hub_signature.split('=', 1)
+    hash_algorithm, github_signature = x_hub_signature.split("=", 1)
     algorithm = hashlib.__dict__.get(hash_algorithm)
-    encoded_key = bytes(private_key, 'latin-1')
+    encoded_key = bytes(private_key, "latin-1")
     mac = hmac.new(encoded_key, msg=data, digestmod=algorithm)
     return hmac.compare_digest(mac.hexdigest(), github_signature)
 
-@app.post('/update_server')
+
+# DON'T CHANGE
+@app.post("/update_server")
 def webhook():
-    x_hub_signature = request.headers.get('X-Hub-Signature')
+    x_hub_signature = request.headers.get("X-Hub-Signature")
     if is_valid_signature(x_hub_signature, request.data, W_SECRET):
-        repo = git.Repo('./mysite')
+        repo = git.Repo("./mysite")
         origin = repo.remotes.origin
         origin.pull()
-        return 'Updated PythonAnywhere successfully', 200
-    return 'Unathorized', 401
+        return "Updated PythonAnywhere successfully", 200
+    return "Unathorized", 401
 
+
+# -------------------------
+# AUTH
+# -------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
@@ -63,8 +73,9 @@ def login():
         footer_text="Noch kein Konto?",
         footer_link_url=url_for("register"),
         footer_link_label="Registrieren",
-        mode="login"
+        mode="login",
     )
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -89,8 +100,9 @@ def register():
         footer_text="Du hast bereits ein Konto?",
         footer_link_url=url_for("login"),
         footer_link_label="Einloggen",
-        mode="register"
+        mode="register",
     )
+
 
 @app.route("/logout")
 @login_required
@@ -98,84 +110,133 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
+
+# -------------------------
+# USERS
+# -------------------------
 @app.route("/users", methods=["GET"])
 @login_required
 def users():
-    rows = db_read("SELECT konto_id, vorname, nachname, email FROM kunden_konto ORDER BY nachname, vorname")
+    rows = db_read(
+        "SELECT konto_id, vorname, nachname, email FROM kunden_konto ORDER BY nachname, vorname"
+    )
     return render_template("users.html", users=rows)
 
+
+# -------------------------
+# TODOS
+# -------------------------
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def index():
     if request.method == "GET":
-        todos = db_read("SELECT id, content, due FROM todos WHERE kunden_konto_id=%s ORDER BY due", (current_user.id,))
+        todos = db_read(
+            "SELECT id, content, due FROM todos WHERE kunden_konto_id=%s ORDER BY due",
+            (current_user.id,),
+        )
         return render_template("main_page.html", todos=todos)
 
     content = request.form["contents"]
     due = request.form["due_at"]
-    db_write("INSERT INTO todos (kunden_konto_id, content, due) VALUES (%s, %s, %s)", (current_user.id, content, due))
+    db_write(
+        "INSERT INTO todos (kunden_konto_id, content, due) VALUES (%s, %s, %s)",
+        (current_user.id, content, due),
+    )
     return redirect(url_for("index"))
+
 
 @app.post("/complete")
 @login_required
 def complete():
     todo_id = request.form.get("id")
-    db_write("DELETE FROM todos WHERE kunden_konto_id=%s AND id=%s", (current_user.id, todo_id))
+    db_write(
+        "DELETE FROM todos WHERE kunden_konto_id=%s AND id=%s",
+        (current_user.id, todo_id),
+    )
     return redirect(url_for("index"))
 
+
+# -------------------------
+# BANK (USES bank_service)
+# -------------------------
 @app.route("/bank", methods=["GET"])
 @login_required
 def bank():
     saldo, waehrung = get_balance(current_user.id)
+
     tx = db_read(
-        """SELECT typ, betrag, waehrung, gebuehr, beschreibung, ausgefuehrt_am
-           FROM transaktion
-           WHERE gesamt_konto_id = (
-             SELECT gesamt_konto_id FROM gesamt_konto
-             WHERE kunden_konto_id=%s ORDER BY gesamt_konto_id LIMIT 1
-           )
-           ORDER BY ausgefuehrt_am DESC
-           LIMIT 20""",
+        """
+        SELECT typ, betrag, waehrung, gebuehr, beschreibung, ausgefuehrt_am
+        FROM transaktion
+        WHERE gesamt_konto_id = (
+          SELECT gesamt_konto_id
+          FROM gesamt_konto
+          WHERE kunden_konto_id=%s
+          ORDER BY gesamt_konto_id
+          LIMIT 1
+        )
+        ORDER BY ausgefuehrt_am DESC
+        LIMIT 20
+        """,
         (current_user.id,),
     )
+
     return render_template("bank.html", saldo=saldo, waehrung=waehrung, tx=tx)
+
+
+def _parse_amount(form_value: str) -> Decimal:
+    """
+    Accepts "100", "100.50", "100,50"
+    """
+    if form_value is None:
+        raise ValueError("Betrag fehlt.")
+    raw = form_value.strip().replace(",", ".")
+    try:
+        amount = Decimal(raw)
+    except (InvalidOperation, ValueError):
+        raise ValueError("Ungültiger Betrag.")
+    if amount <= 0:
+        raise ValueError("Betrag muss > 0 sein.")
+    return amount
+
 
 @app.post("/bank/deposit")
 @login_required
 def bank_deposit():
-    amount = Decimal(request.form.get("amount", "0").replace(",", "."))
     try:
+        amount = _parse_amount(request.form.get("amount"))
         deposit(current_user.id, amount, "CHF", "Manual deposit")
         return redirect(url_for("bank"))
     except Exception as e:
         return render_template("bank_error.html", error=str(e)), 400
 
+
 @app.post("/bank/withdraw")
 @login_required
 def bank_withdraw():
-    amount = Decimal(request.form.get("amount", "0").replace(",", "."))
     try:
+        amount = _parse_amount(request.form.get("amount"))
         withdraw(current_user.id, amount, "CHF", "Manual withdrawal")
         return redirect(url_for("bank"))
     except Exception as e:
         return render_template("bank_error.html", error=str(e)), 400
 
+
 @app.post("/bank/transfer")
 @login_required
 def bank_transfer():
-    to_email = request.form.get("to_email", "")
-    amount = Decimal(request.form.get("amount", "0").replace(",", "."))
     try:
+        to_email = (request.form.get("to_email") or "").strip()
+        if not to_email:
+            raise ValueError("Empfänger E-Mail fehlt.")
+
+        amount = _parse_amount(request.form.get("amount"))
         transfer(current_user.id, to_email, amount, "CHF")
         return redirect(url_for("bank"))
     except Exception as e:
         return render_template("bank_error.html", error=str(e)), 400
-        
-@app.route("/bank")
-@login_required
-def bank():
-    return render_template("bank.html")
 
 
 if __name__ == "__main__":
     app.run()
+
