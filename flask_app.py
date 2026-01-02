@@ -170,6 +170,11 @@ def bank_transfer():
         return redirect(url_for("bank"))
     except Exception as e:
         return render_template("bank_error.html", error=str(e)), 400
+        
+@app.route("/bank")
+@login_required
+def bank():
+    return render_template("bank.html")
 
 
 if __name__ == "__main__":
