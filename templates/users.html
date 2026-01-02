@@ -3,13 +3,15 @@
 {% block content %}
   <h3>Users</h3>
 
-  <ul class="user-list">
+  <ul class="list-group" style="margin-top:15px;">
     {% for user in users %}
-      <li class="user-name">
-        {{ user.vorname }} {{ user.nachname }} — {{ user.email }}
+      <li class="list-group-item">
+        <strong>{{ user.vorname }} {{ user.nachname }}</strong>
+        <span class="text-muted">— {{ user.email }}</span>
       </li>
     {% else %}
-      <div>Keine User gefunden.</div>
+      <li class="list-group-item">Keine User gefunden.</li>
     {% endfor %}
   </ul>
 {% endblock %}
+
