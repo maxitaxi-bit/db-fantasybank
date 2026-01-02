@@ -8,6 +8,9 @@ from db import db_read, db_write
 from auth import login_manager, authenticate, register_user
 from flask_login import login_user, logout_user, login_required, current_user
 import logging
+from decimal import Decimal
+from bank_service import get_balance, deposit, withdraw, transfer
+
 
 logging.basicConfig(
     level=logging.DEBUG,
