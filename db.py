@@ -54,3 +54,32 @@ def db_write(sql, params=None, return_lastrowid=False):
             except Exception:
                 pass
         conn.close()
+
+from contextlib import contextmanager
+
+@contextmanager
+def db_tx():
+    """Yields (conn, cur_dict, cur) in one transaction."""
+    conn = get_conn()
+    cur_dict = None
+    cur = None
+    try:
+        conn.start_transaction()
+        cur_dict = conn.cursor(dictionary=True)
+        cur = conn.cursor()
+        yield conn, cur_dict, cur
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        try:
+            if cur_dict: cur_dict.close()
+        except Exception:
+            pass
+        try:
+            if cur: cur.close()
+        except Exception:
+            pass
+        conn.close()
+
