@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h3>Users</h3>
+
+  <ul class="user-list">
+    {% for user in users %}
+      <li class="user-name">
+        {{ user.vorname }} {{ user.nachname }} — {{ user.email }}
+      </li>
+    {% else %}
+      <div>Keine User gefunden.</div>
+    {% endfor %}
+  </ul>
+{% endblock %}
