@@ -159,7 +159,7 @@ def complete():
 # -------------------------
 # BANK (USES bank_service)
 # -------------------------
-@app.route("/bank", methods=["GET"])
+@app.route("/bank")
 @login_required
 def bank():
     saldo, waehrung = get_balance(current_user.id)
