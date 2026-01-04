@@ -13,7 +13,6 @@ from flask_login import login_user, logout_user, login_required, current_user
 
 from bank_service import get_balance, deposit, withdraw, transfer
 
-
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -48,7 +47,7 @@ def webhook():
         origin = repo.remotes.origin
         origin.pull()
         return "Updated PythonAnywhere successfully", 200
-    return "Unathorized", 401
+    return "Unauthorized", 401
 
 
 # -------------------------
@@ -185,9 +184,6 @@ def bank():
 
 
 def _parse_amount(form_value: str) -> Decimal:
-    """
-    Accepts "100", "100.50", "100,50"
-    """
     if form_value is None:
         raise ValueError("Betrag fehlt.")
     raw = form_value.strip().replace(",", ".")
@@ -239,4 +235,3 @@ def bank_transfer():
 
 if __name__ == "__main__":
     app.run()
-
