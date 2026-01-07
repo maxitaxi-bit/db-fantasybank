@@ -1,0 +1,30 @@
+<!-- In templates/exchange.html: Seite für Währungsumtausch -->
+<h2>Währungsumtausch</h2>
+<p><strong>Aktuelle Kontostände:</strong>
+   CHF {{ "%.2f"|format(chf_balance) }} 
+   {% for cur, bal in foreign_balances %}
+      | {{ cur }} {{ "%.2f"|format(bal) }}
+   {% endfor %}
+</p>
+
+{% if message %}
+  <p style="color:green;">{{ message }}</p>
+{% endif %}
+
+<form action="{{ url_for('exchange') }}" method="post">
+  <label>Betrag:</label>
+  <input type="number" name="amount" step="0.01" min="0.01" required>
+  <label>Von Währung:</label>
+  <select name="from_currency">
+    <option value="CHF">CHF</option>
+    <option value="EUR">EUR</option>
+    <option value="USD">USD</option>
+  </select>
+  <label>Nach Währung:</label>
+  <select name="to_currency">
+    <option value="CHF">CHF</option>
+    <option value="EUR">EUR</option>
+    <option value="USD">USD</option>
+  </select>
+  <button type="submit">Umtauschen</button>
+</form>
