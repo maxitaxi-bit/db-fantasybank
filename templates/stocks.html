@@ -1,0 +1,44 @@
+<!-- In templates/stocks.html: Übersicht Aktienhandel -->
+<h2>Aktienmarkt</h2>
+<p>Verfügbares Guthaben: {{ user_balance }} CHF</p>
+
+<!-- Tabelle: Verfügbare Aktien zum Kauf -->
+<table border="1">
+  <caption><strong>Verfügbare Aktien</strong></caption>
+  <tr><th>Aktie</th><th>Preis (CHF)</th><th>Kaufen</th></tr>
+  {% for stock in stocks %}
+  <tr>
+    <td>{{ stock[1] }}</td>   <!-- Aktienname -->
+    <td>{{ "%.2f"|format(stock[2]) }} CHF</td>  <!-- Preis mit 2 Nachkommastellen -->
+    <td>
+      <form action="{{ url_for('buy_stock') }}" method="post">
+        <input type="hidden" name="stock_id" value="{{ stock[0] }}">
+        <input type="number" name="quantity" min="1" required> 
+        <button type="submit">Kaufen</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<!-- Tabelle: Aktien im Besitz mit Verkaufsformular -->
+<table border="1" style="margin-top:1em;">
+  <caption><strong>Ihr Portfolio</strong></caption>
+  <tr><th>Aktie</th><th>Kurs (CHF)</th><th>Anzahl</th><th>Verkaufen</th></tr>
+  {% for item in portfolio %}
+  <tr>
+    <td>{{ item[1] }}</td>   <!-- Aktienname -->
+    <td>{{ "%.2f"|format(item[2]) }} CHF</td>  <!-- Preis -->
+    <td>{{ item[3] }}</td>   <!-- Bestand des Nutzers -->
+    <td>
+      <form action="{{ url_for('sell_stock') }}" method="post">
+        <input type="hidden" name="stock_id" value="{{ item[0] }}">
+        <input type="number" name="quantity" min="1" max="{{ item[3] }}" required>
+        <button type="submit">Verkaufen</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Sie besitzen noch keine Aktien.</td></tr>
+  {% endfor %}
+</table>
