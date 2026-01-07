@@ -34,16 +34,3 @@ CREATE TABLE IF NOT EXISTS gesamt_konto (
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Todos (gehören zu kunden_konto)
-CREATE TABLE IF NOT EXISTS todos (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  kunden_konto_id BIGINT NOT NULL,
-  content VARCHAR(100) NOT NULL,
-  due DATETIME NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT fk_todos_kunde
-    FOREIGN KEY (kunden_konto_id)
-    REFERENCES kunden_konto(konto_id)
-    ON DELETE CASCADE
-) ENGINE=InnoDB;
