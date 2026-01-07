@@ -1,0 +1,22 @@
+<!-- In templates/savings.html: Übersicht Sparkonto -->
+<h2>Sparkonto</h2>
+<p>Aktueller Saldo: <strong>{{ "%.2f"|format(savings_balance) }} CHF</strong></p>
+{% if last_date %}
+<p>Letzte Zinsgutschrift: {{ last_date }}</p>
+{% else %}
+<p>Noch keine Zinsgutschrift erfolgt.</p>
+{% endif %}
+
+<!-- Einzahlungsformular -->
+<form action="{{ url_for('savings_deposit') }}" method="post" style="margin: 1em 0;">
+  <label>Einzahlen auf Sparkonto:</label>
+  <input type="number" name="amount" step="0.01" min="0.01" required> CHF
+  <button type="submit">Einzahlen</button>
+</form>
+
+<!-- Abhebungsformular -->
+<form action="{{ url_for('savings_withdraw') }}" method="post">
+  <label>Vom Sparkonto abheben:</label>
+  <input type="number" name="amount" step="0.01" min="0.01" required> CHF
+  <button type="submit">Abheben</button>
+</form>
