@@ -57,3 +57,21 @@ CREATE TABLE IF NOT EXISTS savings_accounts (
     last_interest_date TEXT,               -- Datum der letzten Zinsgutschrift
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+-- Tabelle mit festen Wechselkursen zwischen Währungspaaren
+CREATE TABLE IF NOT EXISTS exchange_rates (
+    id            INTEGER PRIMARY KEY,
+    from_currency TEXT,
+    to_currency   TEXT,
+    rate          NUMERIC      -- Umrechnungsfaktor: 1 Einheit von from_currency = rate Einheiten von to_currency
+);
+-- Tabelle für Nutzerguthaben in verschiedenen Währungen
+CREATE TABLE IF NOT EXISTS user_balances (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER, 
+    currency   TEXT,    -- Währungskennung, z.B. 'CHF', 'EUR', 'USD'
+    balance    NUMERIC,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+    -- Optional: UNIQUE (user_id, currency) um Duplikate zu vermeiden
+);
+
