@@ -443,6 +443,86 @@ def savings_withdraw():
     flash("Abhebung erfolgreich.", "success")
     return redirect('/savings')
 
+# In app.py: Route für Währungsumtausch
+@app.route('/exchange', methods=['GET', 'POST'])
+def exchange():
+    user_id = session.get('user_id')
+    db = get_db()
+    cur = db.cursor()
+    message = None  # Nachricht über Erfolg oder Fehler der Umrechnung
+
+    if request.method == 'POST':
+        from_cur = request.form.get('from_currency')
+        to_cur = request.form.get('to_currency')
+        amount_str = request.form.get('amount', "0")
+        try:
+            amount = float(amount_str)
+        except:
+            amount = 0.0
+        # Grundlegende Validierung
+        if amount <= 0 or not from_cur or not to_cur or from_cur == to_cur:
+            message = "Ungültige Eingabe für Währungsumtausch."
+        else:
+            # Prüfen, ob Wechselkurs vorhanden
+            cur.execute("SELECT rate FROM exchange_rates WHERE from_currency = ? AND to_currency = ?", 
+                        (from_cur, to_cur))
+            rate_row = cur.fetchone()
+            if rate_row is None:
+                message = f"Kein Wechselkurs für {from_cur}->{to_cur} vorhanden."
+            else:
+                rate = rate_row[0]
+                converted_amount = round(amount * rate, 2)  # Ergebnis runden auf 2 Nachkommastellen
+                # Guthaben in Quellwährung ermitteln
+                source_balance = 0.0
+                if from_cur == "CHF":  # Hauptkonto (Basiswährung) nutzen
+                    cur.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+                    source_balance = cur.fetchone()[0]
+                else:
+                    # Fremdwährungskonto aus user_balances
+                    cur.execute("SELECT balance FROM user_balances WHERE user_id = ? AND currency = ?", 
+                                (user_id, from_cur))
+                    result = cur.fetchone()
+                    source_balance = result[0] if result else 0.0
+                if amount > source_balance:
+                    message = f"Nicht genügend Guthaben in {from_cur}."
+                else:
+                    # Abziehen vom Quellkonto
+                    if from_cur == "CHF":
+                        new_source_balance = source_balance - amount
+                        cur.execute("UPDATE users SET balance = ? WHERE id = ?", (new_source_balance, user_id))
+                    else:
+                        new_source_balance = source_balance - amount
+                        cur.execute("UPDATE user_balances SET balance = ? WHERE user_id = ? AND currency = ?", 
+                                    (new_source_balance, user_id, from_cur))
+                    # Gutschrift auf Zielkonto
+                    if to_cur == "CHF":
+                        # auf Hauptkonto gutschreiben
+                        cur.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+                        current = cur.fetchone()[0]
+                        new_balance = current + converted_amount
+                        cur.execute("UPDATE users SET balance = ? WHERE id = ?", (new_balance, user_id))
+                    else:
+                        # auf Fremdwährungskonto gutschreiben (Eintrag erstellen falls nicht vorhanden)
+                        cur.execute("SELECT balance FROM user_balances WHERE user_id = ? AND currency = ?", 
+                                    (user_id, to_cur))
+                        result = cur.fetchone()
+                        if result:
+                            new_target_balance = result[0] + converted_amount
+                            cur.execute("UPDATE user_balances SET balance = ? WHERE user_id = ? AND currency = ?", 
+                                        (new_target_balance, user_id, to_cur))
+                        else:
+                            cur.execute("INSERT INTO user_balances (user_id, currency, balance) VALUES (?, ?, ?)", 
+                                        (user_id, to_cur, converted_amount))
+                    db.commit()
+                    message = f"Erfolgreich {amount:.2f} {from_cur} in {converted_amount:.2f} {to_cur} umgetauscht."
+    # Für GET und für Anzeige nach POST: aktuelle Kontostände aller relevanten Währungen abrufen
+    # Hauptkonto (CHF):
+    cur.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+    chf_balance = cur.fetchone()[0]
+    # Fremdwährungs-Konten:
+    cur.execute("SELECT currency, balance FROM user_balances WHERE user_id = ?", (user_id,))
+    foreign_balances = cur.fetchall()  # Liste von (currency, balance)
+    return render_template('exchange.html', chf_balance=chf_balance, foreign_balances=foreign_balances, message=message)
 
 
 if __name__ == "__main__":
