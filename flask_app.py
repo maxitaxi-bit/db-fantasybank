@@ -15,6 +15,10 @@ from flask import session, redirect, request, render_template, flash
 from datetime import datetime, timedelta
 from bank_service import get_balance, deposit, withdraw, transfer
 
+from db import init_app
+init_app(app)
+
+
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
