@@ -70,7 +70,7 @@ def transfer(kunden_konto_id_from: int, to_email: str, amount: Decimal, waehrung
     if amount <= 0:
         raise ValueError("Betrag muss > 0 sein")
 
-   to_row = db_read(
+    to_row = db_read(
         "SELECT konto_id FROM kunden_konto WHERE LOWER(email)=LOWER(%s)",
         (to_email.strip(),),
         single=True
