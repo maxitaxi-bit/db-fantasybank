@@ -1,5 +1,5 @@
 -- =====================================================
--- DATABASE SCHEMA (SOURCE OF TRUTH)
+-- DATABASE SCHEMA (FINAL VERSION)
 -- Project: Flask + MySQL (PythonAnywhere)
 -- =====================================================
 
@@ -27,7 +27,6 @@ CREATE TABLE IF NOT EXISTS gesamt_konto (
   schluessel_ref VARCHAR(120),
   status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT fk_gesamt_konto_kunde
     FOREIGN KEY (kunden_konto_id)
     REFERENCES kunden_konto(konto_id)
@@ -36,42 +35,43 @@ CREATE TABLE IF NOT EXISTS gesamt_konto (
 
 -- Tabelle mit verfügbaren Aktien (fester Preis je Aktie)
 CREATE TABLE IF NOT EXISTS available_stocks (
-    stock_id   INTEGER PRIMARY KEY,
-    name       TEXT,        -- Name oder Kürzel der Aktie
-    price      NUMERIC      -- Festgelegter Preis pro Aktie
-);
--- Tabelle für den Aktienbestand pro Nutzer 
+  stock_id INT AUTO_INCREMENT PRIMARY KEY,
+  name TEXT NOT NULL,
+  price DECIMAL(10,2) NOT NULL
+) ENGINE=InnoDB;
+
+-- Aktienbestand pro Nutzer
 CREATE TABLE IF NOT EXISTS user_stocks (
-    id         INTEGER PRIMARY KEY,
-    user_id    INTEGER,     -- Referenziert Nutzer (FK auf users.id)
-    stock_id   INTEGER,     -- Referenziert Aktie (FK auf available_stocks.stock_id)
-    quantity   INTEGER,     -- Anzahl Aktien dieses Typs, die der Nutzer besitzt
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (stock_id) REFERENCES available_stocks(stock_id)
-);
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  stock_id INT NOT NULL,
+  quantity INT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES kunden_konto(konto_id) ON DELETE CASCADE,
+  FOREIGN KEY (stock_id) REFERENCES available_stocks(stock_id)
+) ENGINE=InnoDB;
 
--- Tabelle für Sparkonten (ein Eintrag pro Nutzer)
+-- Sparkonten (1:1 zu Nutzer)
 CREATE TABLE IF NOT EXISTS savings_accounts (
-    user_id           INTEGER PRIMARY KEY,   -- entspricht Nutzer, 1-zu-1 Beziehung
-    balance           NUMERIC,              -- Aktueller Sparkonto-Saldo
-    last_interest_date TEXT,               -- Datum der letzten Zinsgutschrift
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
+  user_id BIGINT PRIMARY KEY,
+  balance DECIMAL(18,2) NOT NULL DEFAULT 0,
+  last_interest_date DATE,
+  FOREIGN KEY (user_id) REFERENCES kunden_konto(konto_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
--- Tabelle mit festen Wechselkursen zwischen Währungspaaren
+-- Wechselkurse (feste Rates)
 CREATE TABLE IF NOT EXISTS exchange_rates (
-    id            INTEGER PRIMARY KEY,
-    from_currency TEXT,
-    to_currency   TEXT,
-    rate          NUMERIC      -- Umrechnungsfaktor: 1 Einheit von from_currency = rate Einheiten von to_currency
-);
--- Tabelle für Nutzerguthaben in verschiedenen Währungen
-CREATE TABLE IF NOT EXISTS user_balances (
-    id         INTEGER PRIMARY KEY,
-    user_id    INTEGER, 
-    currency   TEXT,    -- Währungskennung, z.B. 'CHF', 'EUR', 'USD'
-    balance    NUMERIC,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-    -- Optional: UNIQUE (user_id, currency) um Duplikate zu vermeiden
-);
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  from_currency CHAR(3) NOT NULL,
+  to_currency CHAR(3) NOT NULL,
+  rate DECIMAL(10,4) NOT NULL
+) ENGINE=InnoDB;
 
+-- Fremdwährungs-Guthaben pro Nutzer
+CREATE TABLE IF NOT EXISTS user_balances (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  currency CHAR(3) NOT NULL,
+  balance DECIMAL(18,2) NOT NULL DEFAULT 0,
+  UNIQUE(user_id, currency),
+  FOREIGN KEY (user_id) REFERENCES kunden_konto(konto_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
