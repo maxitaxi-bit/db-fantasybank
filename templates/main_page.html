@@ -1,18 +1,62 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-5">
-  <h2>Willkommen, {{ current_user.vorname }}!</h2>
-  <p>Wähle eine Aktion:</p>
+  <h2 class="mb-4">Willkommen, {{ current_user.vorname }}!</h2>
+  <p class="lead">Wähle eine Aktion:</p>
 
-  <div class="list-group">
-    <a href="{{ url_for('bank') }}" class="list-group-item list-group-item-action">
-      💰 Kontostand und Transaktionen anzeigen
-    </a>
-    <a href="{{ url_for('users') }}" class="list-group-item list-group-item-action">
-      👥 Benutzerliste
-    </a>
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-3">
+    <div class="col">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <h5 class="card-title">💰 Bank</h5>
+          <p class="card-text">Kontostand prüfen und Transaktionen verwalten</p>
+          <a href="{{ url_for('bank') }}" class="btn btn-outline-success">Zur Bank</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <h5 class="card-title">👥 Benutzerliste</h5>
+          <p class="card-text">Andere registrierte Nutzer anzeigen</p>
+          <a href="{{ url_for('users') }}" class="btn btn-outline-primary">Benutzer</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <h5 class="card-title">📈 Aktien</h5>
+          <p class="card-text">Aktien kaufen oder verkaufen</p>
+          <a href="{{ url_for('stocks_page') }}" class="btn btn-outline-info">Zu Aktien</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <h5 class="card-title">🏦 Sparkonto</h5>
+          <p class="card-text">Monatliche Zinsen auf dein Guthaben erhalten</p>
+          <a href="{{ url_for('savings_page') }}" class="btn btn-outline-warning">Sparkonto</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <h5 class="card-title">💱 Währungsumtausch</h5>
+          <p class="card-text">CHF, EUR, USD direkt wechseln</p>
+          <a href="{{ url_for('exchange') }}" class="btn btn-outline-secondary">Umtausch</a>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
+
 
 
