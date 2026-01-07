@@ -11,8 +11,7 @@ from db import db_read, db_write
 from auth import login_manager, authenticate, register_user
 from flask_login import login_user, logout_user, login_required, current_user
 from flask import session, redirect, request, render_template, flash
-from datetime import datetime
-
+from datetime import datetime, timedelta
 from bank_service import get_balance, deposit, withdraw, transfer
 
 logging.basicConfig(
@@ -327,6 +326,122 @@ def sell_stock():
     db.commit()
     flash("Aktienverkauf erfolgreich durchgeführt", "success")
     return redirect('/stocks')
+
+# In app.py: Logik für Sparkonto-Zinsen und Routen für Ein-/Auszahlung
+
+
+
+def apply_monthly_interest(user_id):
+    """Prüft, ob für das Sparkonto des Nutzers monatliche Zinsen fällig sind, und aktualisiert den Saldo entsprechend."""
+    db = get_db()
+    cur = db.cursor()
+    # Aktuellen Saldo und Datum der letzten Zinszahlung holen
+    cur.execute("SELECT balance, last_interest_date FROM savings_accounts WHERE user_id = ?", (user_id,))
+    result = cur.fetchone()
+    if result is None:
+        return  # Kein Sparkonto vorhanden (falls noch nicht angelegt)
+    balance, last_date_str = result
+    last_date = datetime.fromisoformat(last_date_str)
+    today = datetime.today()
+    # Prüfen, wie viele Monate seit last_interest_date vergangen sind
+    months_passed = (today.year - last_date.year) * 12 + (today.month - last_date.month)
+    if months_passed >= 1:
+        # Für jeden vollen Monat 1% Zinsen hinzufügen (Zinseszins bei >1 Monaten)
+        for _ in range(months_passed):
+            interest = balance * 0.01
+            balance += interest
+        # Datum der letzten Zinsgutschrift auf heute aktualisieren
+        cur.execute("UPDATE savings_accounts SET balance = ?, last_interest_date = ? WHERE user_id = ?", 
+                    (balance, today.strftime("%Y-%m-%d"), user_id))
+        db.commit()
+
+@app.route('/savings')
+def savings_page():
+    """Anzeige des Sparkontos: aktueller Stand und Formulare für Ein-/Auszahlung."""
+    user_id = session.get('user_id')
+    # Zinsen ggf. gutschreiben, falls ein Monat vergangen ist
+    apply_monthly_interest(user_id)
+    db = get_db()
+    cur = db.cursor()
+    # aktuellen Sparkonto-Stand nach evtl. Zinsgutschrift holen
+    cur.execute("SELECT balance, last_interest_date FROM savings_accounts WHERE user_id = ?", (user_id,))
+    savings = cur.fetchone()
+    savings_balance = savings[0] if savings else 0.0
+    last_date = savings[1] if savings else None
+    return render_template('savings.html', savings_balance=savings_balance, last_date=last_date)
+
+@app.route('/savings/deposit', methods=['POST'])
+def savings_deposit():
+    """Einzahlung auf das Sparkonto (vom Hauptkonto abziehen)."""
+    user_id = session.get('user_id')
+    amount_str = request.form.get('amount', "0")
+    try:
+        amount = float(amount_str)
+    except:
+        amount = 0.0
+    if amount <= 0:
+        flash("Bitte einen gültigen Betrag eingeben.", "error")
+        return redirect('/savings')
+    db = get_db()
+    cur = db.cursor()
+    # Hauptkonto-Guthaben prüfen
+    cur.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+    main_balance = cur.fetchone()[0]
+    if amount > main_balance:
+        flash("Nicht genügend Guthaben auf dem Hauptkonto.", "error")
+        return redirect('/savings')
+    # Hauptkonto belasten und Sparkonto gutschreiben
+    new_main_balance = main_balance - amount
+    cur.execute("UPDATE users SET balance = ? WHERE id = ?", (new_main_balance, user_id))
+    # Sparkonto aktualisieren (falls noch kein Eintrag, neu anlegen)
+    cur.execute("SELECT balance FROM savings_accounts WHERE user_id = ?", (user_id,))
+    result = cur.fetchone()
+    if result:
+        new_savings_balance = result[0] + amount
+        cur.execute("UPDATE savings_accounts SET balance = ? WHERE user_id = ?", 
+                    (new_savings_balance, user_id))
+    else:
+        # Sparkonto existiert noch nicht: anlegen mit dem Einzahlungsbetrag
+        today_str = datetime.today().strftime("%Y-%m-%d")
+        cur.execute("INSERT INTO savings_accounts (user_id, balance, last_interest_date) VALUES (?, ?, ?)", 
+                    (user_id, amount, today_str))
+    db.commit()
+    flash("Einzahlung erfolgreich.", "success")
+    return redirect('/savings')
+
+@app.route('/savings/withdraw', methods=['POST'])
+def savings_withdraw():
+    """Abheben vom Sparkonto (aufs Hauptkonto buchen)."""
+    user_id = session.get('user_id')
+    amount_str = request.form.get('amount', "0")
+    try:
+        amount = float(amount_str)
+    except:
+        amount = 0.0
+    if amount <= 0:
+        flash("Bitte einen gültigen Betrag eingeben.", "error")
+        return redirect('/savings')
+    db = get_db()
+    cur = db.cursor()
+    # Sparkonto-Saldo prüfen
+    cur.execute("SELECT balance FROM savings_accounts WHERE user_id = ?", (user_id,))
+    result = cur.fetchone()
+    savings_balance = result[0] if result else 0.0
+    if amount > savings_balance:
+        flash("Nicht genügend Guthaben auf dem Sparkonto.", "error")
+        return redirect('/savings')
+    # Sparkonto belasten und Hauptkonto gutschreiben
+    new_savings_balance = savings_balance - amount
+    cur.execute("UPDATE savings_accounts SET balance = ? WHERE user_id = ?", 
+                (new_savings_balance, user_id))
+    # Hauptkonto erhöhen
+    cur.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+    main_balance = cur.fetchone()[0]
+    new_main_balance = main_balance + amount
+    cur.execute("UPDATE users SET balance = ? WHERE id = ?", (new_main_balance, user_id))
+    db.commit()
+    flash("Abhebung erfolgreich.", "success")
+    return redirect('/savings')
 
 
 
