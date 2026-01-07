@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
 import os
 from mysql.connector import pooling
+import sqlite3
+from flask import g
+from flask import current_app
 
 load_dotenv()
 DB_CONFIG = {
@@ -11,6 +14,29 @@ DB_CONFIG = {
 }
 
 pool = pooling.MySQLConnectionPool(pool_name="pool", pool_size=5, **DB_CONFIG)
+
+
+
+DATABASE = "db.sqlite3"  # oder dein tatsächlicher Datenbankpfad
+
+def get_db():
+    if 'db' not in g:
+        g.db = sqlite3.connect(DATABASE)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+
+
+
+def close_db(e=None):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
+def init_app(app):
+    app.teardown_appcontext(close_db)
+
+
 
 def get_conn():
     return pool.get_connection()
