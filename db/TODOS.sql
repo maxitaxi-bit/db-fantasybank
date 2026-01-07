@@ -34,3 +34,19 @@ CREATE TABLE IF NOT EXISTS gesamt_konto (
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Tabelle mit verfügbaren Aktien (fester Preis je Aktie)
+CREATE TABLE available_stocks (
+    stock_id   INTEGER PRIMARY KEY,
+    name       TEXT,        -- Name oder Kürzel der Aktie
+    price      NUMERIC      -- Festgelegter Preis pro Aktie
+);
+-- Tabelle für den Aktienbestand pro Nutzer 
+CREATE TABLE user_stocks (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER,     -- Referenziert Nutzer (FK auf users.id)
+    stock_id   INTEGER,     -- Referenziert Aktie (FK auf available_stocks.stock_id)
+    quantity   INTEGER,     -- Anzahl Aktien dieses Typs, die der Nutzer besitzt
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (stock_id) REFERENCES available_stocks(stock_id)
+);
+
