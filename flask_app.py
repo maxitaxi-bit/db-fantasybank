@@ -123,6 +123,9 @@ def users():
 
 
 
+@app.route("/")
+def home_redirect():
+    return redirect(url_for("bank"))
 
 
 # -------------------------
