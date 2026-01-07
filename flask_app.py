@@ -10,6 +10,8 @@ from decimal import Decimal, InvalidOperation
 from db import db_read, db_write
 from auth import login_manager, authenticate, register_user
 from flask_login import login_user, logout_user, login_required, current_user
+from flask import session, redirect, request, render_template, flash
+from datetime import datetime
 
 from bank_service import get_balance, deposit, withdraw, transfer
 
@@ -206,6 +208,126 @@ def bank_transfer():
         return redirect(url_for("bank"))
     except Exception as e:
         return render_template("bank_error.html", error=str(e)), 400
+
+
+# In app.py: Routen für Aktienübersicht, Kauf und Verkauf
+
+
+
+@app.route('/stocks')
+def stocks_page():
+    """Übersichtsseite: verfügbare Aktien und Portfolio des aktuellen Nutzers anzeigen."""
+    user_id = session.get('user_id')        # aktuell eingeloggter Nutzer (aus Session)
+    db = get_db()                           # DB-Verbindung (Funktion get_db() vorausgesetzt)
+    cur = db.cursor()
+    # Alle verfügbaren Aktien auslesen
+    stocks = cur.execute("SELECT stock_id, name, price FROM available_stocks").fetchall()
+    # Aktienbestand des Nutzers (Join mit Aktien für Namen und Preis)
+    portfolio = cur.execute("""
+        SELECT s.stock_id, s.name, s.price, u.quantity 
+        FROM user_stocks u 
+        JOIN available_stocks s ON u.stock_id = s.stock_id 
+        WHERE u.user_id = ?;
+    """, (user_id,)).fetchall()
+    return render_template('stocks.html', stocks=stocks, portfolio=portfolio)
+
+@app.route('/buy_stock', methods=['POST'])
+def buy_stock():
+    """Aktie kaufen: verarbeitet das Kauf-Formular."""
+    user_id = session.get('user_id')
+    stock_id = request.form.get('stock_id')
+    qty_str = request.form.get('quantity', "0")
+    try:
+        quantity = int(qty_str)
+    except:
+        quantity = 0
+    if quantity <= 0:
+        # Ungültige Eingabe
+        flash("Ungültige Anzahl", "error")
+        return redirect('/stocks')
+    # Aktienpreis abrufen
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT price FROM available_stocks WHERE stock_id = ?", (stock_id,))
+    row = cur.fetchone()
+    if row is None:
+        flash("Aktie existiert nicht", "error")
+        return redirect('/stocks')
+    price = row[0]
+    cost = price * quantity
+    # Kontostand des Nutzers prüfen (angenommen: Users-Tabelle hat Feld 'balance')
+    cur.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+    user_balance = cur.fetchone()[0]
+    if cost > user_balance:
+        # Nicht genug Guthaben für den Kauf
+        flash("Nicht genügend Guthaben für diesen Kauf", "error")
+        return redirect('/stocks')
+    # Kauf durchführen: Geld abziehen und Aktienbestand erhöhen
+    new_balance = user_balance - cost
+    cur.execute("UPDATE users SET balance = ? WHERE id = ?", (new_balance, user_id))
+    # Prüfen, ob der Nutzer die Aktie schon besitzt
+    cur.execute("SELECT quantity FROM user_stocks WHERE user_id = ? AND stock_id = ?", 
+                (user_id, stock_id))
+    result = cur.fetchone()
+    if result:
+        # Bereits Eintrag vorhanden: Anzahl erhöhen
+        current_qty = result[0]
+        new_qty = current_qty + quantity
+        cur.execute("UPDATE user_stocks SET quantity = ? WHERE user_id = ? AND stock_id = ?", 
+                    (new_qty, user_id, stock_id))
+    else:
+        # Noch kein Eintrag: neuen Datensatz anlegen
+        cur.execute("INSERT INTO user_stocks (user_id, stock_id, quantity) VALUES (?, ?, ?)", 
+                    (user_id, stock_id, quantity))
+    db.commit()
+    flash("Aktienkauf erfolgreich durchgeführt", "success")
+    return redirect('/stocks')
+
+@app.route('/sell_stock', methods=['POST'])
+def sell_stock():
+    """Aktie verkaufen: verarbeitet das Verkaufs-Formular."""
+    user_id = session.get('user_id')
+    stock_id = request.form.get('stock_id')
+    qty_str = request.form.get('quantity', "0")
+    try:
+        quantity = int(qty_str)
+    except:
+        quantity = 0
+    if quantity <= 0:
+        flash("Ungültige Anzahl", "error")
+        return redirect('/stocks')
+    db = get_db()
+    cur = db.cursor()
+    # Prüfen, ob der Nutzer die Aktie besitzt und wie viele
+    cur.execute("SELECT quantity FROM user_stocks WHERE user_id = ? AND stock_id = ?", 
+                (user_id, stock_id))
+    result = cur.fetchone()
+    if result is None or result[0] < quantity:
+        # Nutzer hat nicht genügend Stücke dieser Aktie
+        flash("Nicht genügend Aktien zum Verkaufen vorhanden", "error")
+        return redirect('/stocks')
+    # Aktienpreis holen für Verkaufswert
+    cur.execute("SELECT price FROM available_stocks WHERE stock_id = ?", (stock_id,))
+    price = cur.fetchone()[0]
+    revenue = price * quantity  # Verkaufserlös
+    # Aktienbestand reduzieren
+    new_qty = result[0] - quantity
+    if new_qty > 0:
+        cur.execute("UPDATE user_stocks SET quantity = ? WHERE user_id = ? AND stock_id = ?", 
+                    (new_qty, user_id, stock_id))
+    else:
+        # Wenn alles verkauft, den Datensatz löschen
+        cur.execute("DELETE FROM user_stocks WHERE user_id = ? AND stock_id = ?", 
+                    (user_id, stock_id))
+    # Geld dem Nutzer gutschreiben
+    cur.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+    current_balance = cur.fetchone()[0]
+    new_balance = current_balance + revenue
+    cur.execute("UPDATE users SET balance = ? WHERE id = ?", (new_balance, user_id))
+    db.commit()
+    flash("Aktienverkauf erfolgreich durchgeführt", "success")
+    return redirect('/stocks')
+
 
 
 if __name__ == "__main__":
