@@ -6,6 +6,7 @@ import hmac
 import hashlib
 import logging
 from decimal import Decimal, InvalidOperation
+from db import get_db
 
 from db import db_read, db_write
 from auth import login_manager, authenticate, register_user
