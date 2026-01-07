@@ -124,8 +124,10 @@ def users():
 
 
 @app.route("/")
-def home_redirect():
-    return redirect(url_for("bank"))
+@login_required
+def index():
+    return render_template("main_page.html")
+
 
 
 # -------------------------
