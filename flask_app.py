@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from bank_service import get_balance, deposit, withdraw, transfer
 
 from db import init_app
-init_app(app)
+
 
 
 logging.basicConfig(
@@ -528,7 +528,7 @@ def exchange():
     cur.execute("SELECT currency, balance FROM user_balances WHERE user_id = ?", (user_id,))
     foreign_balances = cur.fetchall()  # Liste von (currency, balance)
     return render_template('exchange.html', chf_balance=chf_balance, foreign_balances=foreign_balances, message=message)
-
+init_app(app)
 
 if __name__ == "__main__":
     app.run()
